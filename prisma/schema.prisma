@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Admin {
+  id           String         @id @default(cuid())
+  name         String
+  email        String         @unique
+  passwordHash String
+  isSuperuser  Boolean        @default(false)
+  createdAt    DateTime       @default(now())
+  projects     ProjectAdmin[]
+}
+
+model Project {
+  id          String            @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  members     ProjectAdmin[]
+  groups      InvitationGroup[]
+
+  // Email template
+  emailSubject        String?
+  emailHeading        String?
+  emailEventName      String?
+  emailEventDate      String?
+  emailEventLocation  String?
+  emailBodyText       String?
+  emailAccentColor    String?
+  emailHeaderImageUrl String?
+
+  // Landing page (InvitationView)
+  pageHeading         String?
+  pageEventName       String?
+  pageEventDate       String?
+  pageEventLocation   String?
+  pageWelcomeText     String?
+  pageAccentColor     String?
+  pageHeaderImageUrl  String?
+
+  // Design template: "classic" (purple gradient) | "elegant" (minimal white)
+  designTemplate      String?  @default("classic")
+}
+
+model ProjectAdmin {
+  projectId  String
+  adminId    String
+  assignedAt DateTime @default(now())
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  admin      Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, adminId])
+}
+
+// Jedna grupa = jedan email = jedan link
+// Primary contact prima email i odgovara za sve u grupi
+model InvitationGroup {
+  id               String   @id @default(cuid())
+  email            String   @unique
+  token            String   @unique @default(uuid())
+  emailSent        Boolean  @default(false)
+  sentAt           DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  guests           Guest[]
+  createdByAdminId String
+  projectId        String
+  project          Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+// Svaka pozvana osoba (primary + pratnja + djeca)
+model Guest {
+  id           String          @id @default(cuid())
+  name         String
+  isPrimary    Boolean         @default(false)
+  isChild      Boolean         @default(false)
+  addedByGuest Boolean         @default(false) // dodano od strane gosta, nije iz CSV-a
+  status       RsvpStatus      @default(PENDING)
+  respondedAt  DateTime?
+  groupId      String
+  group        InvitationGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdAt    DateTime        @default(now())
+}
+
+enum RsvpStatus {
+  PENDING
+  ATTENDING
+  NOT_ATTENDING
+  MAYBE
+}

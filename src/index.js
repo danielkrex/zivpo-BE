@@ -17,6 +17,7 @@ app.use(cors({
 app.use(express.json())
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }))
+app.get('/healthz', (req, res) => res.send('OK'))
 
 app.use('/api/auth', authRoutes)
 app.use('/api/admin', adminRoutes)
